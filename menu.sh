@@ -49,6 +49,7 @@ function Select {
     echo "6. 修改端口"
     echo "7. 更新"
     echo "8. 重置账号密码"
+    echo "9. 查看初始密码"
     echo "0. 退出"
     echo -n "请选择一个选项: "
     read option
@@ -148,6 +149,36 @@ function Select {
             wait $pid
             # 如果需要可以在此处进行清理
             systemctl restart sublink
+            ;;
+        9)
+            echo "正在查找初始管理员密码..."
+            echo "==========================================="
+            cd /usr/local/bin/sublink
+            
+            # 首先检查密码文件是否存在
+            if [ -f "admin_password.txt" ]; then
+                echo "📄 从保存的文件中读取密码信息："
+                cat admin_password.txt
+            else
+                echo "📋 未找到密码文件，尝试从系统日志查找..."
+                # 查找系统日志中的随机密码信息
+                password_info=$(journalctl -u sublink --no-pager | grep "随机密码" | tail -1)
+                if [ -n "$password_info" ]; then
+                    echo "$password_info"
+                else
+                    echo "❌ 未找到初始密码信息"
+                    echo "💡 可能原因："
+                    echo "   1. 数据库已存在，未生成新密码"
+                    echo "   2. 日志已被清理"
+                    echo "   3. 程序未正常初始化"
+                    echo ""
+                    echo "🔧 解决方法："
+                    echo "   1. 重置账号密码（选项8）"
+                    echo "   2. 删除db目录重新初始化"
+                fi
+            fi
+            echo "==========================================="
+            read -p "按回车键继续..."
             ;;
         0)
             exit 0

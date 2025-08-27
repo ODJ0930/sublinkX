@@ -93,6 +93,14 @@ func EncodeClash(urls []string, sqlconfig SqlConfig) ([]byte, error) {
 	for _, link := range urls {
 		Scheme := strings.Split(link, "://")[0]
 		switch {
+		case Scheme == "relay":
+			// 处理relay代理链
+			relayProxy, err := processRelayChain(link, sqlconfig)
+			if err != nil {
+				log.Println("处理relay代理链失败:", err)
+				continue
+			}
+			proxys = append(proxys, relayProxy)
 		case Scheme == "ss":
 			ss, err := DecodeSSURL(link)
 			if err != nil {
@@ -392,7 +400,18 @@ func DecodeClash(proxys []Proxy, yamlfile string) ([]byte, error) {
 	// 添加新代理
 	for _, p := range proxys {
 		ProxiesNameList = append(ProxiesNameList, p.Name)
-		proxies = append(proxies, p)
+		
+		// 如果是relay类型，需要生成特殊的配置格式
+		if p.Type == "relay" {
+			relayConfig := map[string]interface{}{
+				"name":    p.Name,
+				"type":    "relay",
+				"proxies": []string{p.Server, p.Password}, // Server存储前置节点，Password存储后置节点
+			}
+			proxies = append(proxies, relayConfig)
+		} else {
+			proxies = append(proxies, p)
+		}
 	}
 	// proxies = append(proxies, newProxy)
 	config["proxies"] = proxies
@@ -437,3 +456,38 @@ func DecodeClash(proxys []Proxy, yamlfile string) ([]byte, error) {
 	}
 	return newData, nil
 }
+
+// processRelayChain 处理relay代理链，生成Clash relay代理配置
+func processRelayChain(relayLink string, sqlconfig SqlConfig) (Proxy, error) {
+	// 解析relay链接: relay://front_node|backend_node
+	parts := strings.Split(relayLink, "://")
+	if len(parts) != 2 {
+		return Proxy{}, fmt.Errorf("invalid relay link format")
+	}
+	
+	nodes := strings.Split(parts[1], "|")
+	if len(nodes) != 2 {
+		return Proxy{}, fmt.Errorf("relay link must contain front_node|backend_node")
+	}
+	
+	frontNodeName := strings.TrimSpace(nodes[0])
+	backendNodeName := strings.TrimSpace(nodes[1])
+	
+	// 生成代理链名称
+	chainName := fmt.Sprintf("%s→%s", frontNodeName, backendNodeName)
+	
+	// 创建relay代理配置，注意这里我们用一个特殊的结构来存储relay信息
+	// 在最终生成配置时，我们需要特殊处理这种类型
+	relayProxy := Proxy{
+		Name: chainName,
+		Type: "relay",
+		// 使用Server和Port字段临时存储前置和后置节点名称
+		Server:   frontNodeName,  // 临时存储前置节点名称
+		Password: backendNodeName, // 临时存储后置节点名称
+	}
+	
+	return relayProxy, nil
+}
+
+
+

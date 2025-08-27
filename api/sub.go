@@ -203,3 +203,71 @@ func SubDel(c *gin.Context) {
 		"msg":  "删除订阅成功",
 	})
 }
+
+// 创建代理链
+func CreateRelayChain(c *gin.Context) {
+	frontNode := c.PostForm("front_node")    // 前置节点
+	backendNode := c.PostForm("backend_node") // 落地节点
+	chainName := c.PostForm("chain_name")     // 代理链名称
+
+	if frontNode == "" || backendNode == "" || chainName == "" {
+		c.JSON(400, gin.H{
+			"msg": "前置节点、落地节点和代理链名称不能为空",
+		})
+		return
+	}
+
+	// 检查前置节点是否存在
+	var frontNodeData models.Node
+	err := models.DB.Where("name = ?", frontNode).First(&frontNodeData).Error
+	if err != nil {
+		c.JSON(400, gin.H{
+			"msg": "前置节点不存在: " + frontNode,
+		})
+		return
+	}
+
+	// 检查落地节点是否存在
+	var backendNodeData models.Node
+	err = models.DB.Where("name = ?", backendNode).First(&backendNodeData).Error
+	if err != nil {
+		c.JSON(400, gin.H{
+			"msg": "落地节点不存在: " + backendNode,
+		})
+		return
+	}
+
+	// 创建代理链节点
+	relayNode := models.Node{
+		Name: chainName,
+		Link: generateRelayLink(frontNode, backendNode),
+	}
+
+	// 保存到数据库
+	err = models.DB.Create(&relayNode).Error
+	if err != nil {
+		c.JSON(400, gin.H{
+			"msg": "创建代理链失败: " + err.Error(),
+		})
+		return
+	}
+
+	// 代理链节点创建完成，作为普通节点存储即可
+
+	c.JSON(200, gin.H{
+		"code": "00000",
+		"msg":  "代理链创建成功",
+		"data": gin.H{
+			"chain_name":   chainName,
+			"front_node":   frontNode,
+			"backend_node": backendNode,
+		},
+	})
+}
+
+// 生成Relay代理链的配置字符串
+func generateRelayLink(frontNode, backendNode string) string {
+	// 这里生成一个特殊的标识符，表示这是一个relay代理链
+	// 格式: relay://front_node|backend_node
+	return "relay://" + frontNode + "|" + backendNode
+}

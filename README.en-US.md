@@ -20,7 +20,7 @@ Front-end based on: https://github.com/youlaitech/vue3-element-admin
 
 Backend using go+gin+gorm
 
-Default account admin password 123456 self-modification
+Default account admin password randomly generated displayed on first run
 
 Because of the rewrite there are still a lot of layout structure and a little less functionality
 

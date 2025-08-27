@@ -34,3 +34,14 @@ export function UpdateSub(data: any){
     },
   });
 }
+
+export function CreateRelayChain(data: any){
+  return request({
+    url: "/api/v1/subcription/relay/create",
+    method: "post",
+    data,
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+}

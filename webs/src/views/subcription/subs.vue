@@ -1,6 +1,6 @@
 <script setup lang='ts'>
 import { ref,onMounted  } from 'vue'
-import {getSubs,AddSub,DelSub,UpdateSub} from "@/api/subcription/subs"
+import {getSubs,AddSub,DelSub,UpdateSub,CreateRelayChain} from "@/api/subcription/subs"
 import {getTemp} from "@/api/subcription/temp"
 import {getNodes} from "@/api/subcription/node"
 import QrcodeVue from 'qrcode.vue'
@@ -300,10 +300,82 @@ const toggleSelect = (name: string) => {
   }
 }
 
+// 代理链相关变量
+const relayDialogVisible = ref(false)
+const relayChainName = ref('')
+const frontNode = ref('')
+const backendNode = ref('')
+
+// 打开代理链配置对话框
+const handleCreateRelay = () => {
+  relayDialogVisible.value = true
+  relayChainName.value = ''
+  frontNode.value = ''
+  backendNode.value = ''
+}
+
+// 创建代理链
+const createRelayChain = async () => {
+  if (!relayChainName.value || !frontNode.value || !backendNode.value) {
+    ElMessage.error('请填写完整的代理链信息')
+    return
+  }
+
+  const formData = new FormData()
+  formData.append('chain_name', relayChainName.value)
+  formData.append('front_node', frontNode.value)
+  formData.append('backend_node', backendNode.value)
+
+  try {
+    await CreateRelayChain(formData)
+    ElMessage.success('代理链创建成功')
+    relayDialogVisible.value = false
+    // 刷新页面数据
+    getsubs()
+  } catch (error) {
+    ElMessage.error('代理链创建失败')
+  }
+}
+
 </script>
 
 <template>
   <div>
+    <!-- 代理链配置对话框 -->
+    <el-dialog v-model="relayDialogVisible" title="创建代理链" width="500px" draggable>
+      <el-form :model="{}" label-width="100px">
+        <el-form-item label="代理链名称">
+          <el-input v-model="relayChainName" placeholder="请输入代理链名称" />
+        </el-form-item>
+        <el-form-item label="前置节点">
+          <el-select v-model="frontNode" placeholder="选择前置节点" style="width: 100%">
+            <el-option
+              v-for="node in NodesList"
+              :key="node.ID"
+              :label="node.Name"
+              :value="node.Name"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="落地节点">
+          <el-select v-model="backendNode" placeholder="选择落地节点" style="width: 100%">
+            <el-option
+              v-for="node in NodesList"
+              :key="node.ID"
+              :label="node.Name"
+              :value="node.Name"
+            />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="relayDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="createRelayChain">创建</el-button>
+        </div>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="Qrdialog" width="300px" style="text-align: center" :title="QrTitle">
       <qrcode-vue :value="qrcode"  :size="200" level="H" />
       <el-input
@@ -412,6 +484,7 @@ const toggleSelect = (name: string) => {
   </el-dialog>
     <el-card>
     <el-button type="primary" @click="handleAddSub">添加订阅</el-button>
+    <el-button type="success" @click="handleCreateRelay" style="margin-left: 10px">创建代理链</el-button>
     <div style="margin-bottom: 10px"></div>
 
       <el-table ref="table" 
