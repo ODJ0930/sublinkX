@@ -60,14 +60,16 @@ surge支持协议:ss trojan vmess hy2 tuic
 
 
 ## [安装说明]
-### linux方式：
-```
-curl -s -H "Cache-Control: no-cache" -H "Pragma: no-cache" https://raw.githubusercontent.com/gooaclok819/sublinkX/main/install.sh | sudo bash
+### Linux方式：
+```bash
+curl -s -H "Cache-Control: no-cache" -H "Pragma: no-cache" https://raw.githubusercontent.com/ODJ0930/sublinkX/main/install.sh | sudo bash
 ```
 
-```sublink``` 呼出菜单
+安装脚本会自动检测：
+- 如果有Release版本，会优先下载预编译的二进制文件
+- 如果没有Release版本，会自动使用源码编译方式安装
 
-然后输入安装脚本即可
+安装完成后输入 ```sublink``` 呼出菜单
 
 ### docker方式：
 

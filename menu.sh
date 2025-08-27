@@ -1,8 +1,20 @@
 #!/bin/bash
 function Up {
+    echo "正在检查更新方式..."
     # 获取最新的发行版标签
     latest_release=$(curl --silent "https://api.github.com/repos/ODJ0930/sublinkX/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-    echo "最新版本: $latest_release"
+    
+    # 检查是否有Release版本
+    if [ -z "$latest_release" ] || [ "$latest_release" = "null" ]; then
+        echo "未找到Release版本，使用源码编译方式更新..."
+        update_from_source
+    else
+        echo "最新版本: $latest_release"
+        update_from_release
+    fi
+}
+
+function update_from_release {
     # 检测机器类型
     machine_type=$(uname -m)
 
@@ -16,15 +28,83 @@ function Up {
     fi
 
     # 下载文件
+    echo "正在从Release下载更新..."
     curl -LO "https://github.com/ODJ0930/sublinkX/releases/download/$latest_release/$file_name"
+
+    # 检查下载是否成功
+    if [ ! -f "$file_name" ]; then
+        echo "Release下载失败，尝试源码编译更新..."
+        update_from_source
+        return
+    fi
 
     # 设置文件为可执行
     chmod +x $file_name
 
     # 移动文件到指定目录
-    mv $file_name "$INSTALL_DIR/sublink"
+    mv $file_name "/usr/local/bin/sublink/sublink"
     echo "更新完成"
+}
 
+function update_from_source {
+    echo "使用源码编译方式更新..."
+    
+    # 检查Git是否安装
+    if ! command -v git &> /dev/null; then
+        echo "Git 未安装，无法更新"
+        return
+    fi
+    
+    # 检查Go是否安装
+    if ! command -v go &> /dev/null; then
+        echo "Go 未安装，无法编译更新"
+        return
+    fi
+    
+    # 临时目录
+    TEMP_DIR="/tmp/sublinkX_update"
+    
+    # 克隆最新代码
+    if [ -d "$TEMP_DIR" ]; then
+        rm -rf "$TEMP_DIR"
+    fi
+    
+    git clone https://github.com/ODJ0930/sublinkX.git "$TEMP_DIR"
+    cd "$TEMP_DIR"
+    
+    # 编译
+    export PATH=$PATH:/usr/local/go/bin
+    go mod download
+    
+    machine_type=$(uname -m)
+    if [ "$machine_type" = "x86_64" ]; then
+        GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o sublink main.go
+    elif [ "$machine_type" = "aarch64" ]; then
+        GOOS=linux GOARCH=arm64 go build -ldflags="-w -s" -o sublink main.go
+    else
+        echo "不支持的机器类型: $machine_type"
+        cd /
+        rm -rf "$TEMP_DIR"
+        return
+    fi
+    
+    # 检查编译是否成功
+    if [ ! -f "sublink" ]; then
+        echo "编译失败"
+        cd /
+        rm -rf "$TEMP_DIR"
+        return
+    fi
+    
+    # 替换程序文件
+    chmod +x sublink
+    mv sublink "/usr/local/bin/sublink/sublink"
+    
+    # 清理临时文件
+    cd /
+    rm -rf "$TEMP_DIR"
+    
+    echo "源码编译更新完成"
 }
 function Select {
     # 获取最新的发行版标签
